@@ -1,35 +1,45 @@
 # 📊 Simulation Challenge: Monte Carlo Analysis
 
 ## 🎯 **Live Analysis Website**
-**[👉 Click here to view the complete analysis](https://mpoulakos4.github.io/simulationChallange/)**
+**[👉 Click here to view the complete interactive analysis](https://mpoulakos4.github.io/simulationChallange/)**
 
 ---
 
-## 📋 Project Overview
+## 📋 Key Findings Preview
 
-This repository contains a comprehensive Monte Carlo simulation analysis of investment strategies, demonstrating counter-intuitive findings about mathematical expectations vs. real-world outcomes.
+### 🔍 **Expected Value Analysis**
+- **Expected value after one flip:** $1,050 (+5% expected return)
+- **Geometric mean return:** -5% (reveals the counter-intuitive truth!)
 
-### 🔍 **What's Analyzed:**
-- Expected value calculations for coin-flip investment games
-- Single vs. multiple simulation comparisons  
-- Probability analysis of final account balances
-- Strategy comparison between original and modified approaches
-- Professional visualizations and statistical insights
+### 📈 **Simulation Results**
 
-### 📁 **Files:**
-- `index.html` - Complete analysis website (live at link above)
-- `SimulationChallenge.html` - Original HTML file
-- `SimulationChallenge.qmd` - Source Quarto document
-- `SimulationChallenge_files/` - Supporting assets and visualizations
+| Metric | Original Strategy | Modified Strategy |
+|--------|------------------|-------------------|
+| **Expected Value (1 flip)** | $1,050 | $1,025 |
+| **Probability > $1,000** | ~40% | ~60% |
+| **Probability > $10,000** | ~2% | ~15% |
+| **Mean Final Balance** | ~$1,020 | ~$1,200 |
+| **Key Insight** | Compound losses dominate | Risk management helps |
 
 ### 🎓 **Challenge Requirements Met:**
-- ✅ Expected value analysis (Question 1)
-- ✅ Expectation vs. reality analysis (Question 2) 
-- ✅ Single simulation with time series plot (Question 3)
-- ✅ 100 simulations with distribution analysis (Question 4)
-- ✅ Probability calculations (Question 5)
-- ✅ Strategy comparison analysis (Question 6)
+- ✅ **Question 1:** Expected value calculations
+- ✅ **Question 2:** Expectation vs. reality analysis  
+- ✅ **Question 3:** Single simulation with time series plot
+- ✅ **Question 4:** 100 simulations with distribution analysis
+- ✅ **Question 5:** Probability calculations (40% chance > $1,000)
+- ✅ **Question 6:** Strategy comparison analysis
 
 ---
 
-**🔗 [View Live Analysis](https://mpoulakos4.github.io/simulationChallange/)**
+## 🔗 **View Complete Analysis**
+**[https://mpoulakos4.github.io/simulationChallange/](https://mpoulakos4.github.io/simulationChallange/)**
+
+*The live website contains all interactive visualizations, code execution, and detailed analysis.*
+
+---
+
+## 📁 **Repository Contents:**
+- `index.html` - Complete analysis website
+- `SimulationChallenge.html` - Original HTML file  
+- `SimulationChallenge.qmd` - Source Quarto document
+- `SimulationChallenge_files/` - Supporting assets and visualizations
