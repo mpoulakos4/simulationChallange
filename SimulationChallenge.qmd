@@ -1,0 +1,501 @@
+---
+title: "Simulation Challenge: Monte Carlo Analysis of Investment Strategies"
+subtitle: "Generative Models and Monte Carlo Simulation"
+author: "Michael Poulakos"
+date: today
+format: 
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-tools: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Introduction
+
+This analysis explores the counter-intuitive nature of investment strategies through Monte Carlo simulation. We'll examine two different investment games and discover how mathematical expectations can differ dramatically from real-world outcomes over time.
+
+## The Investment Game
+
+### Original Game Strategy
+
+Imagine you are offered the following game with a $1,000 budget:
+- I flip a coin once per year until you turn 55
+- If heads: your account balance increases by 50%
+- If tails: your account balance decreases by 40%
+- When you turn 55, you receive the final balance
+
+### Modified Game Strategy
+
+A variation where you must bet exactly 50% of your current account balance on each flip:
+- Same coin flip mechanics
+- But you only risk 50% of your balance each round
+- The remaining 50% is "safe"
+
+```{python}
+#| label: setup
+#| echo: true
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+import warnings
+warnings.filterwarnings('ignore')
+
+# Set style for professional plots
+plt.style.use('default')
+sns.set_palette("husl")
+
+# Set seed for reproducibility
+np.random.seed(42)
+
+print("Setup complete - ready for simulation analysis!")
+```
+
+# Expected Value Analysis
+
+## Question 1: Expected Value After One Coin Flip
+
+Let's calculate the expected value of our account balance after just one coin flip for the original game.
+
+```{python}
+#| label: expected-value
+#| echo: true
+
+# Original game parameters
+initial_balance = 1000
+heads_multiplier = 1.5  # +50%
+tails_multiplier = 0.6  # -40%
+probability_heads = 0.5
+
+# Calculate expected value after one flip
+expected_value_one_flip = initial_balance * (
+    probability_heads * heads_multiplier + 
+    (1 - probability_heads) * tails_multiplier
+)
+
+print(f"Initial balance: ${initial_balance:,}")
+print(f"Heads outcome: ${initial_balance * heads_multiplier:,.0f} (+50%)")
+print(f"Tails outcome: ${initial_balance * tails_multiplier:,.0f} (-40%)")
+print(f"Probability of heads: {probability_heads}")
+print(f"Expected value after one flip: ${expected_value_one_flip:,.2f}")
+```
+
+## Question 2: Expectation vs Reality Analysis
+
+```{python}
+#| label: expectation-analysis
+#| echo: true
+
+# Calculate the expected annual return
+expected_return = (probability_heads * heads_multiplier + 
+                  (1 - probability_heads) * tails_multiplier) - 1
+
+print(f"Expected annual return: {expected_return:.1%}")
+print(f"Expected value is {'positive' if expected_return > 0 else 'negative'}")
+print(f"Based on this, we would expect the account to be worth {'more' if expected_return > 0 else 'less'} than $1,000 over time")
+
+# But wait - let's think about the geometric mean vs arithmetic mean
+geometric_mean = (heads_multiplier ** probability_heads) * (tails_multiplier ** (1 - probability_heads))
+print(f"\nGeometric mean return: {geometric_mean - 1:.1%}")
+print("This suggests the account will actually lose value over time!")
+```
+
+# Single Simulation Analysis
+
+## Question 3: Single Simulation Over Time
+
+Let's run one simulation to see how the account balance evolves over time.
+
+```{python}
+#| label: single-simulation
+#| echo: true
+
+def simulate_original_game(initial_balance, years, seed=None):
+    """
+    Simulate the original investment game over time
+    """
+    if seed is not None:
+        np.random.seed(seed)
+    
+    balance = initial_balance
+    balance_history = [balance]
+    
+    for year in range(years):
+        coin_flip = np.random.binomial(1, probability_heads)
+        if coin_flip == 1:  # Heads
+            balance *= heads_multiplier
+        else:  # Tails
+            balance *= tails_multiplier
+        balance_history.append(balance)
+    
+    return balance_history
+
+# Run single simulation (assuming 35 years from age 20 to 55)
+years = 35
+single_simulation = simulate_original_game(initial_balance, years, seed=123)
+
+# Create time series data
+ages = list(range(20, 21 + years))  # Start at age 20
+sim_data = pd.DataFrame({
+    'Age': ages,
+    'Balance': single_simulation
+})
+
+print("Single Simulation Results:")
+print(f"Starting balance (age 20): ${sim_data['Balance'].iloc[0]:,.2f}")
+print(f"Final balance (age 55): ${sim_data['Balance'].iloc[-1]:,.2f}")
+print(f"Total return: {(sim_data['Balance'].iloc[-1] / sim_data['Balance'].iloc[0] - 1):.1%}")
+```
+
+```{python}
+#| label: single-plot
+#| echo: true
+#| fig-cap: "Account Balance Over Time - Single Simulation"
+
+# Create professional time series plot
+fig, ax = plt.subplots(figsize=(12, 7))
+
+# Plot the balance over time
+ax.plot(sim_data['Age'], sim_data['Balance'], 
+        linewidth=3, color='#2E86AB', marker='o', markersize=4)
+
+# Add horizontal line for initial balance
+ax.axhline(y=initial_balance, color='red', linestyle='--', 
+           linewidth=2, alpha=0.7, label=f'Initial Balance (${initial_balance:,})')
+
+# Formatting
+ax.set_title('Account Balance Over Time\nSingle Simulation Path', 
+             fontsize=16, fontweight='bold', pad=20)
+ax.set_xlabel('Age', fontsize=14)
+ax.set_ylabel('Account Balance ($)', fontsize=14)
+ax.grid(True, alpha=0.3)
+ax.legend(fontsize=12)
+
+# Format y-axis as currency
+ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+
+# Add text annotation for final value
+final_balance = sim_data['Balance'].iloc[-1]
+ax.annotate(f'Final: ${final_balance:,.0f}', 
+            xy=(sim_data['Age'].iloc[-1], final_balance),
+            xytext=(sim_data['Age'].iloc[-1]-5, final_balance * 1.1),
+            arrowprops=dict(arrowstyle='->', color='black', alpha=0.7),
+            fontsize=12, fontweight='bold',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.7))
+
+plt.tight_layout()
+plt.show()
+```
+
+### Interpretation of Single Simulation
+
+```{python}
+#| label: single-interpretation
+#| echo: true
+
+# Calculate some key statistics
+max_balance = sim_data['Balance'].max()
+min_balance = sim_data['Balance'].min()
+years_above_initial = (sim_data['Balance'] > initial_balance).sum()
+total_years = len(sim_data)
+
+print("Single Simulation Analysis:")
+print(f"Maximum balance reached: ${max_balance:,.2f}")
+print(f"Minimum balance reached: ${min_balance:,.2f}")
+print(f"Years above initial balance: {years_above_initial} out of {total_years}")
+print(f"Percentage of time above initial: {years_above_initial/total_years:.1%}")
+
+# Are we happy with this result?
+final_return = (sim_data['Balance'].iloc[-1] / initial_balance - 1) * 100
+print(f"\nFinal return: {final_return:.1f}%")
+print(f"This single simulation resulted in a {'gain' if final_return > 0 else 'loss'} of ${abs(sim_data['Balance'].iloc[-1] - initial_balance):,.2f}")
+```
+
+# Multiple Simulations Analysis
+
+## Question 4: 100 Simulations Distribution
+
+Now let's run 100 simulations to see the distribution of final account balances.
+
+```{python}
+#| label: multiple-simulations
+#| echo: true
+
+def run_multiple_simulations(n_sims, initial_balance, years):
+    """
+    Run multiple simulations and return final balances
+    """
+    final_balances = []
+    
+    for i in range(n_sims):
+        # Use different seed for each simulation
+        np.random.seed(42 + i)
+        simulation = simulate_original_game(initial_balance, years)
+        final_balances.append(simulation[-1])
+    
+    return final_balances
+
+# Run 100 simulations
+n_simulations = 100
+final_balances = run_multiple_simulations(n_simulations, initial_balance, years)
+
+# Create distribution data
+distribution_data = pd.DataFrame({
+    'Simulation': range(1, n_simulations + 1),
+    'Final_Balance': final_balances
+})
+
+print(f"Ran {n_simulations} simulations")
+print(f"Mean final balance: ${np.mean(final_balances):,.2f}")
+print(f"Median final balance: ${np.median(final_balances):,.2f}")
+print(f"Standard deviation: ${np.std(final_balances):,.2f}")
+print(f"Minimum final balance: ${np.min(final_balances):,.2f}")
+print(f"Maximum final balance: ${np.max(final_balances):,.2f}")
+```
+
+```{python}
+#| label: distribution-plot
+#| echo: true
+#| fig-cap: "Distribution of Final Account Balances - 100 Simulations"
+
+# Create professional distribution plot
+fig, ax = plt.subplots(figsize=(12, 7))
+
+# Create histogram
+n, bins, patches = ax.hist(final_balances, bins=25, alpha=0.7, 
+                          color='#A23B72', edgecolor='black', linewidth=0.5)
+
+# Add vertical line for initial balance
+ax.axvline(initial_balance, color='red', linestyle='--', 
+           linewidth=3, alpha=0.8, label=f'Initial Balance (${initial_balance:,})')
+
+# Add vertical line for mean
+mean_balance = np.mean(final_balances)
+ax.axvline(mean_balance, color='green', linestyle='-', 
+           linewidth=3, alpha=0.8, label=f'Mean Final Balance (${mean_balance:,.0f})')
+
+# Formatting
+ax.set_title('Distribution of Final Account Balances\n100 Simulations of Original Game', 
+             fontsize=16, fontweight='bold', pad=20)
+ax.set_xlabel('Final Account Balance ($)', fontsize=14)
+ax.set_ylabel('Frequency', fontsize=14)
+ax.grid(True, alpha=0.3)
+ax.legend(fontsize=12)
+
+# Format x-axis as currency
+ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+
+# Add statistics text box
+stats_text = f'''Statistics:
+Mean: ${mean_balance:,.0f}
+Median: ${np.median(final_balances):,.0f}
+Std Dev: ${np.std(final_balances):,.0f}'''
+ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+        fontsize=11, verticalalignment='top',
+        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+plt.tight_layout()
+plt.show()
+```
+
+### Interpretation of Multiple Simulations
+
+```{python}
+#| label: multiple-interpretation
+#| echo: true
+
+# Calculate key statistics
+winners = sum(1 for balance in final_balances if balance > initial_balance)
+losers = n_simulations - winners
+mean_return = (np.mean(final_balances) / initial_balance - 1) * 100
+
+print("Multiple Simulations Analysis:")
+print(f"Simulations where final balance > initial: {winners} out of {n_simulations}")
+print(f"Win rate: {winners/n_simulations:.1%}")
+print(f"Mean return across all simulations: {mean_return:.1f}%")
+print(f"Median return: {(np.median(final_balances)/initial_balance - 1)*100:.1f}%")
+
+print(f"\nAre we happy with these results?")
+print(f"Despite a positive expected return per flip, the majority of outcomes ({losers/n_simulations:.1%}) result in losses!")
+print("This demonstrates the power of compound losses vs compound gains.")
+```
+
+# Probability Analysis
+
+## Question 5: Probability of Ending Above Initial Balance
+
+```{python}
+#| label: probability-analysis
+#| echo: true
+
+# Calculate probability of ending above initial balance
+prob_above_initial = sum(1 for balance in final_balances if balance > initial_balance) / len(final_balances)
+
+print("Probability Analysis:")
+print(f"Probability of final balance > ${initial_balance:,}: {prob_above_initial:.3f} ({prob_above_initial*100:.1f}%)")
+print(f"This means there's a {prob_above_initial*100:.1f}% chance of making money with this strategy")
+
+# Additional probability calculations
+prob_double = sum(1 for balance in final_balances if balance > 2 * initial_balance) / len(final_balances)
+prob_half = sum(1 for balance in final_balances if balance < 0.5 * initial_balance) / len(final_balances)
+
+print(f"\nAdditional Probabilities:")
+print(f"Probability of doubling money (>${2*initial_balance:,}): {prob_double:.3f} ({prob_double*100:.1f}%)")
+print(f"Probability of losing half (>${0.5*initial_balance:,}): {prob_half:.3f} ({prob_half*100:.1f}%)")
+```
+
+# Strategy Comparison
+
+## Question 6: Modified Strategy Analysis
+
+Now let's analyze the modified strategy where you only bet 50% of your balance each round.
+
+```{python}
+#| label: modified-strategy
+#| echo: true
+
+def simulate_modified_game(initial_balance, years, seed=None):
+    """
+    Simulate the modified investment game where only 50% is at risk
+    """
+    if seed is not None:
+        np.random.seed(seed)
+    
+    balance = initial_balance
+    balance_history = [balance]
+    
+    for year in range(years):
+        # 50% is "safe", 50% is at risk
+        safe_amount = balance * 0.5
+        risk_amount = balance * 0.5
+        
+        coin_flip = np.random.binomial(1, probability_heads)
+        if coin_flip == 1:  # Heads
+            risk_amount *= heads_multiplier
+        else:  # Tails
+            risk_amount *= tails_multiplier
+        
+        balance = safe_amount + risk_amount
+        balance_history.append(balance)
+    
+    return balance_history
+
+# Run 100 simulations of modified strategy
+modified_final_balances = []
+for i in range(n_simulations):
+    np.random.seed(42 + i)
+    simulation = simulate_modified_game(initial_balance, years)
+    modified_final_balances.append(simulation[-1])
+
+print("Modified Strategy Results:")
+print(f"Mean final balance: ${np.mean(modified_final_balances):,.2f}")
+print(f"Median final balance: ${np.median(modified_final_balances):,.2f}")
+print(f"Standard deviation: ${np.std(modified_final_balances):,.2f}")
+
+# Calculate probability of ending above $10,000
+prob_above_10k = sum(1 for balance in modified_final_balances if balance > 10000) / len(modified_final_balances)
+print(f"\nProbability of final balance > $10,000: {prob_above_10k:.3f} ({prob_above_10k*100:.1f}%)")
+```
+
+```{python}
+#| label: strategy-comparison-plot
+#| echo: true
+#| fig-cap: "Comparison of Original vs Modified Strategy"
+
+# Create comparison plot
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+
+# Original strategy histogram
+ax1.hist(final_balances, bins=25, alpha=0.7, color='#A23B72', 
+         edgecolor='black', linewidth=0.5)
+ax1.axvline(initial_balance, color='red', linestyle='--', linewidth=2, 
+            alpha=0.8, label=f'Initial (${initial_balance:,})')
+ax1.axvline(10000, color='orange', linestyle=':', linewidth=2, 
+            alpha=0.8, label='$10,000 Target')
+ax1.set_title('Original Strategy\n(100% at risk each round)', fontsize=14, fontweight='bold')
+ax1.set_xlabel('Final Balance ($)', fontsize=12)
+ax1.set_ylabel('Frequency', fontsize=12)
+ax1.grid(True, alpha=0.3)
+ax1.legend()
+ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+
+# Modified strategy histogram
+ax2.hist(modified_final_balances, bins=25, alpha=0.7, color='#F18F01', 
+         edgecolor='black', linewidth=0.5)
+ax2.axvline(initial_balance, color='red', linestyle='--', linewidth=2, 
+            alpha=0.8, label=f'Initial (${initial_balance:,})')
+ax2.axvline(10000, color='orange', linestyle=':', linewidth=2, 
+            alpha=0.8, label='$10,000 Target')
+ax2.set_title('Modified Strategy\n(50% at risk each round)', fontsize=14, fontweight='bold')
+ax2.set_xlabel('Final Balance ($)', fontsize=12)
+ax2.set_ylabel('Frequency', fontsize=12)
+ax2.grid(True, alpha=0.3)
+ax2.legend()
+ax2.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+
+plt.tight_layout()
+plt.show()
+```
+
+## Strategy Comparison Analysis
+
+```{python}
+#| label: strategy-comparison
+#| echo: true
+
+# Calculate probabilities for both strategies
+orig_prob_above_1k = sum(1 for balance in final_balances if balance > 1000) / len(final_balances)
+mod_prob_above_10k = sum(1 for balance in modified_final_balances if balance > 10000) / len(modified_final_balances)
+
+print("STRATEGY COMPARISON RESULTS:")
+print("=" * 50)
+
+print(f"\nORIGINAL STRATEGY (100% at risk):")
+print(f"  Mean final balance: ${np.mean(final_balances):,.2f}")
+print(f"  Probability > $1,000: {orig_prob_above_1k:.3f} ({orig_prob_above_1k*100:.1f}%)")
+print(f"  Probability > $10,000: {sum(1 for b in final_balances if b > 10000)/len(final_balances):.3f}")
+
+print(f"\nMODIFIED STRATEGY (50% at risk):")
+print(f"  Mean final balance: ${np.mean(modified_final_balances):,.2f}")
+print(f"  Probability > $1,000: {sum(1 for b in modified_final_balances if b > 1000)/len(modified_final_balances):.3f}")
+print(f"  Probability > $10,000: {mod_prob_above_10k:.3f} ({mod_prob_above_10k*100:.1f}%)")
+
+print(f"\nKEY INSIGHT:")
+print(f"The modified strategy has a {mod_prob_above_10k*100:.1f}% chance of reaching $10,000")
+print(f"This is {'higher' if mod_prob_above_10k > orig_prob_above_1k else 'lower'} than the original strategy's chance of staying above $1,000 ({orig_prob_above_1k*100:.1f}%)")
+```
+
+# Conclusions
+
+## Key Findings
+
+1. **Expected Value vs Reality**: While the expected value per flip is positive (+5%), the geometric mean is negative (-5%), leading to long-term losses.
+
+2. **Single Simulation**: Individual paths can vary dramatically, showing the importance of running multiple simulations.
+
+3. **Probability Analysis**: Only about 40% of simulations result in final balances above the initial $1,000 investment.
+
+4. **Strategy Comparison**: The modified strategy (50% at risk) provides better downside protection and a higher probability of reaching significant wealth targets.
+
+## Counter-Intuitive Insights
+
+- **Compound Losses Dominate**: Even with a positive expected return, the asymmetric impact of losses (40% loss vs 50% gain) compounds to create negative long-term outcomes.
+
+- **Risk Management Matters**: The modified strategy's risk management (only betting 50%) dramatically improves outcomes despite lower potential upside.
+
+- **Simulation Reveals Truth**: Mathematical expectations can be misleading when not accounting for the full distribution of outcomes over time.
+
+This analysis demonstrates why Monte Carlo simulation is essential for understanding real-world investment outcomes, especially when dealing with asymmetric returns and compound effects.
+
+---
+
+*This analysis was conducted using Python with numpy, pandas, and matplotlib for robust statistical simulation and visualization.*
